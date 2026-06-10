@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spring Boot Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f4;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #1c1c1a; }
+      .calc-body { background: #2a2a28; border-color: #3a3a38; }
+      .display-area { background: #1c1c1a; border-color: #4a4a48; }
+      .num-input { background: #1c1c1a; border-color: #3a3a38; color: #e8e8e6; }
+      .op-btn { background: #1c1c1a; border-color: #3a3a38; color: #a0a09e; box-shadow: 0 2px 0 #3a3a38; }
+      .op-btn:hover { background: #2a2a28; color: #e8e8e6; }
+      .op-btn.active { background: #2a2a28; border-color: #5a5a58; color: #e8e8e6; box-shadow: 0 0px 0 #3a3a38; }
+      .calc-btn { background: #1c1c1a; border-color: #4a4a48; color: #e8e8e6; box-shadow: 0 2px 0 #3a3a38; }
+      .calc-btn:hover { background: #2a2a28; }
+      .display-expr { color: #888886; }
+      .display-result { color: #e8e8e6; }
+      .calc-label { color: #666664; }
+      .endpoint-badge { color: #666664; }
+      .history-item { color: #666664; border-color: #3a3a38; }
+      .history-val { color: #888886; }
+    }
+
+    .calc-wrap {
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .calc-body {
+      background: #ebebea;
+      border: 0.5px solid #d0d0ce;
+      border-radius: 12px;
+      padding: 1.25rem;
+      width: 300px;
+    }
+
+    .calc-label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #888886;
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 8px;
+    }
+
+    .display-area {
+      background: #ffffff;
+      border: 0.5px solid #c0c0be;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      min-height: 64px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .display-expr {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #888886;
+      min-height: 16px;
+      letter-spacing: 0.05em;
+    }
+
+    .display-result {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 26px;
+      font-weight: 700;
+      color: #1c1c1a;
+      text-align: right;
+      letter-spacing: -0.02em;
+      transition: color 0.15s;
+    }
+
+    .display-result.success { color: #1D9E75; }
+    .display-result.error { color: #E24B4A; font-size: 14px; padding-top: 8px; }
+    .display-result.loading { color: #b0b0ae; }
+
+    .input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+
+    .num-input {
+      flex: 1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 0.5px solid #c0c0be;
+      background: #ffffff;
+      color: #1c1c1a;
+      text-align: right;
+      width: 0;
+      -moz-appearance: textfield;
+    }
+
+    .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .num-input:focus { outline: none; border-color: #909090; }
+
+    .op-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .op-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 10px 0;
+      border-radius: 8px;
+      border: 0.5px solid #c0c0be;
+      background: #ffffff;
+      color: #888886;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.08s, border-color 0.1s;
+      box-shadow: 0 2px 0 #c0c0be;
+      user-select: none;
+    }
+
+    .op-btn:hover { background: #ebebea; color: #1c1c1a; }
+    .op-btn:active { transform: translateY(2px); box-shadow: 0 0px 0 #c0c0be; }
+    .op-btn.active {
+      background: #ebebea;
+      border-color: #909090;
+      color: #1c1c1a;
+      box-shadow: 0 0px 0 #c0c0be;
+      transform: translateY(2px);
+    }
+
+    .calc-btn {
+      width: 100%;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 11px 0;
+      border-radius: 8px;
+      border: 0.5px solid #909090;
+      background: #ffffff;
+      color: #1c1c1a;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.08s;
+      box-shadow: 0 2px 0 #c0c0be;
+    }
+
+    .calc-btn:hover { background: #ebebea; }
+    .calc-btn:active { transform: translateY(2px); box-shadow: 0 0px 0 #c0c0be; }
+    .calc-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    .history-section { margin-top: 14px; }
+
+    .history-item {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #888886;
+      padding: 4px 0;
+      border-bottom: 0.5px solid #d8d8d6;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .history-item:last-child { border-bottom: none; }
+    .history-val { color: #606060; }
+
+    .endpoint-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #888886;
+      margin-bottom: 12px;
+    }
+
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #1D9E75; }
+    .dot.loading { background: #EF9F27; animation: pulse 1s infinite; }
+    .dot.error { background: #E24B4A; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  </style>
+</head>
+<body>
+  <div class="calc-wrap">
+    <div class="calc-body">
+      <div class="endpoint-badge">
+        <span class="dot" id="dot"></span>
+        <span id="endpoint-txt">POST localhost:8080/calc</span>
+      </div>
+
+      <div class="calc-label">display</div>
+      <div class="display-area">
+        <div class="display-expr" id="expr">—</div>
+        <div class="display-result" id="result">0</div>
+      </div>
+
+      <div class="calc-label">inputs</div>
+      <div class="input-row">
+        <input class="num-input" type="number" id="n1" value="0" placeholder="a" />
+        <input class="num-input" type="number" id="n2" value="0" placeholder="b" />
+      </div>
+
+      <div class="calc-label">operator</div>
+      <div class="op-grid">
+        <button class="op-btn" data-op="+">+</button>
+        <button class="op-btn" data-op="−">−</button>
+        <button class="op-btn" data-op="×">×</button>
+        <button class="op-btn" data-op="÷">÷</button>
+      </div>
+
+      <button class="calc-btn" id="calc-btn" disabled>CALCULATE</button>
+
+      <div class="history-section" id="hist-section" style="display:none;">
+        <div class="calc-label" style="margin-top:4px;">history</div>
+        <div id="history"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const opMap = { '+': '+', '−': '-', '×': '*', '÷': '/' };
+    const opDisplay = { '+': '+', '−': '−', '×': '×', '÷': '÷' };
+    let selectedOp = null;
+    const history = [];
+
+    const dot = document.getElementById('dot');
+    const epTxt = document.getElementById('endpoint-txt');
+    const expr = document.getElementById('expr');
+    const result = document.getElementById('result');
+    const btn = document.getElementById('calc-btn');
+    const n1 = document.getElementById('n1');
+    const n2 = document.getElementById('n2');
+    const histSection = document.getElementById('hist-section');
+    const histEl = document.getElementById('history');
+
+    document.querySelectorAll('.op-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.op-btn').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+        selectedOp = b.dataset.op;
+        btn.disabled = false;
+        updateExpr();
+      });
+    });
+
+    [n1, n2].forEach(el => el.addEventListener('input', updateExpr));
+
+    function updateExpr() {
+      if (!selectedOp) return;
+      expr.textContent = `${n1.value || 0} ${opDisplay[selectedOp]} ${n2.value || 0}`;
+    }
+
+    btn.addEventListener('click', async () => {
+      if (!selectedOp) return;
+      const num1 = parseFloat(n1.value) || 0;
+      const num2 = parseFloat(n2.value) || 0;
+      const op = opMap[selectedOp];
+      const exprText = `${num1} ${opDisplay[selectedOp]} ${num2}`;
+
+      expr.textContent = exprText;
+      result.textContent = '...';
+      result.className = 'display-result loading';
+      btn.disabled = true;
+      dot.className = 'dot loading';
+      epTxt.textContent = 'POST localhost:8080/calc';
+
+      try {
+        const res = await fetch('http://localhost:8080/calc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number1: num1, number2: num2, operator: op })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || `HTTP ${res.status}`);
+        }
+
+        const val = data.result;
+        const formatted = Number.isInteger(val) ? val.toString() : parseFloat(val.toFixed(10)).toString();
+        result.textContent = formatted;
+        result.className = 'display-result success';
+        dot.className = 'dot';
+        epTxt.textContent = `200 OK — ${formatted}`;
+
+        history.unshift({ expr: exprText, val: formatted });
+        if (history.length > 5) history.pop();
+        renderHistory();
+
+      } catch (e) {
+        let msg = e.message;
+        if (e instanceof TypeError) msg = 'サーバーに接続できません';
+        result.textContent = msg;
+        result.className = 'display-result error';
+        dot.className = 'dot error';
+        epTxt.textContent = 'error';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    function renderHistory() {
+      histSection.style.display = 'block';
+      histEl.innerHTML = history.map(h =>
+        `<div class="history-item"><span>${h.expr}</span><span class="history-val">= ${h.val}</span></div>`
+      ).join('');
+    }
+  </script>
+</body>
+</html>
