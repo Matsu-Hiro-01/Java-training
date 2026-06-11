@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0B0D18;
+    --surface:   #13162A;
+    --glass:     rgba(255,255,255,0.04);
+    --border:    rgba(255,255,255,0.08);
+    --accent:    #7C5CFC;
+    --accent2:   #A57BFF;
+    --done:      #22D3A5;
+    --danger:    #FF5E7D;
+    --text:      #E8EAF6;
+    --muted:     #6B7280;
+    --card-h:    88px;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans JP', 'Inter', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 16px 80px;
+    overflow-x: hidden;
+  }
+
+  /* ── Ambient glow ── */
+  body::before {
+    content: '';
+    position: fixed;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(124,92,252,0.12) 0%, transparent 70%);
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container { width: 100%; max-width: 600px; position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  header { margin-bottom: 40px; }
+  .header-eyebrow {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #fff 30%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+  .stats {
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    gap: 16px;
+  }
+  .stats span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .dot.done { background: var(--done); }
+
+  /* ── Add form ── */
+  .add-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 28px;
+    position: relative;
+  }
+  .add-form input {
+    flex: 1;
+    height: 52px;
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 0 20px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    backdrop-filter: blur(8px);
+  }
+  .add-form input::placeholder { color: var(--muted); }
+  .add-form input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,92,252,0.18);
+  }
+  .add-btn {
+    height: 52px;
+    padding: 0 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    font-size: 22px;
+    font-weight: 300;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .add-btn:hover { background: var(--accent2); box-shadow: 0 4px 24px rgba(124,92,252,0.4); transform: translateY(-1px); }
+  .add-btn:active { transform: translateY(0); }
+
+  /* ripple */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.35);
+    transform: scale(0);
+    animation: ripple 0.55s linear;
+    pointer-events: none;
+  }
+  @keyframes ripple { to { transform: scale(4); opacity: 0; } }
+
+  /* ── Filter tabs ── */
+  .filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .filter-btn {
+    padding: 6px 16px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .filter-btn:not(.active):hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+  /* ── Todo list ── */
+  #todo-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: var(--card-h);
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.3s, opacity 0.4s, height 0.35s;
+    animation: slideIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    overflow: hidden;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)   scale(1); }
+  }
+  .todo-item:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.14); }
+  .todo-item.completed { border-color: rgba(34,211,165,0.2); }
+  .todo-item.removing { opacity: 0; height: 0 !important; padding-top: 0; padding-bottom: 0; margin: 0; border-width: 0; }
+
+  /* toggle button */
+  .toggle-btn {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s;
+    position: relative;
+  }
+  .toggle-btn svg { width: 13px; height: 13px; opacity: 0; transition: opacity 0.2s; }
+  .toggle-btn:hover { border-color: var(--done); box-shadow: 0 0 0 4px rgba(34,211,165,0.12); }
+  .todo-item.completed .toggle-btn {
+    background: var(--done);
+    border-color: var(--done);
+    box-shadow: 0 0 12px rgba(34,211,165,0.4);
+  }
+  .todo-item.completed .toggle-btn svg { opacity: 1; }
+
+  /* text */
+  .todo-text {
+    flex: 1;
+    font-size: 15px;
+    font-weight: 400;
+    transition: color 0.3s, text-decoration 0.3s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .todo-item.completed .todo-text {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  /* id badge */
+  .todo-id {
+    font-family: 'Inter', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: rgba(255,255,255,0.04);
+    border-radius: 6px;
+    padding: 3px 7px;
+    flex-shrink: 0;
+  }
+
+  /* delete button */
+  .delete-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  .delete-btn:hover { background: rgba(255,94,125,0.15); color: var(--danger); border-color: rgba(255,94,125,0.3); }
+
+  /* ── Empty state ── */
+  #empty-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 0;
+    color: var(--muted);
+    gap: 12px;
+  }
+  #empty-state svg { opacity: 0.3; }
+  #empty-state p { font-size: 14px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 13px;
+    padding: 10px 20px;
+    border-radius: 99px;
+    pointer-events: none;
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.35s;
+    opacity: 0;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* ── Error state ── */
+  #error-banner {
+    display: none;
+    margin-bottom: 16px;
+    padding: 12px 18px;
+    background: rgba(255,94,125,0.1);
+    border: 1px solid rgba(255,94,125,0.25);
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--danger);
+  }
+
+  /* ── Loading ── */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 40px auto;
+    display: block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="header-eyebrow">タスク管理</div>
+    <h1>Todo</h1>
+    <div class="stats">
+      <span><span class="dot"></span><span id="pending-count">0</span> 件未完了</span>
+      <span><span class="dot done"></span><span id="done-count">0</span> 件完了</span>
+    </div>
+  </header>
+
+  <div id="error-banner"></div>
+
+  <div class="add-form">
+    <input type="text" id="new-todo-input" placeholder="新しいタスクを追加..." autocomplete="off">
+    <button class="add-btn" id="add-btn" title="追加">＋</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">すべて</button>
+    <button class="filter-btn" data-filter="active">未完了</button>
+    <button class="filter-btn" data-filter="completed">完了済み</button>
+  </div>
+
+  <div id="todo-list"><div class="spinner"></div></div>
+  <div id="empty-state">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+      <rect x="9" y="3" width="6" height="4" rx="1"/>
+    </svg>
+    <p>タスクがありません</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8080/todos';
+let todos = [];
+let currentFilter = 'all';
+let nextId = 100;
+
+// ─── API helpers ───────────────────────────────────────────
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('json') ? res.json() : res.text();
+}
+
+// ─── State ─────────────────────────────────────────────────
+async function loadTodos() {
+  showError(null);
+  try {
+    todos = await apiFetch(API);
+    nextId = Math.max(...todos.map(t => t.id), 99) + 1;
+    renderAll();
+  } catch(e) {
+    showError('サーバーに接続できません。localhost:8080 が起動しているか確認してください。');
+    document.getElementById('todo-list').innerHTML = '';
+  }
+}
+
+async function addTodo(title) {
+  const todo = { id: nextId++, title, complete: false };
+  try {
+    const created = await apiFetch(API, { method:'POST', body: JSON.stringify(todo) });
+    todos.push(created);
+    renderAll();
+    showToast(`「${created.title}」を追加しました`);
+  } catch(e) { showError('追加に失敗しました'); }
+}
+
+async function toggleTodo(id) {
+  try {
+    const updated = await apiFetch(`${API}/${id}`, { method:'PUT' });
+    const i = todos.findIndex(t => t.id === id);
+    if (i !== -1) todos[i] = updated;
+    renderAll();
+    showToast(updated.complete ? '完了しました ✓' : '未完了に戻しました');
+  } catch(e) { showError('更新に失敗しました'); }
+}
+
+async function deleteTodo(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) { el.classList.add('removing'); }
+  try {
+    await apiFetch(`${API}/${id}`, { method:'DELETE' });
+    setTimeout(() => {
+      todos = todos.filter(t => t.id !== id);
+      renderAll();
+    }, 380);
+    showToast('削除しました');
+  } catch(e) {
+    if (el) el.classList.remove('removing');
+    showError('削除に失敗しました');
+  }
+}
+
+// ─── Render ────────────────────────────────────────────────
+function filteredTodos() {
+  if (currentFilter === 'active')    return todos.filter(t => !t.complete);
+  if (currentFilter === 'completed') return todos.filter(t => t.complete);
+  return todos;
+}
+
+function renderAll() {
+  const list = document.getElementById('todo-list');
+  const empty = document.getElementById('empty-state');
+  const items = filteredTodos();
+
+  // stats
+  const done = todos.filter(t => t.complete).length;
+  document.getElementById('pending-count').textContent = todos.length - done;
+  document.getElementById('done-count').textContent = done;
+
+  if (items.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // keep existing DOM nodes, update or create
+  const existingIds = new Set([...list.querySelectorAll('.todo-item')].map(el => +el.dataset.id));
+  const newIds = new Set(items.map(t => t.id));
+
+  // remove stale (already animated by removing class)
+  existingIds.forEach(id => {
+    if (!newIds.has(id)) {
+      const el = list.querySelector(`[data-id="${id}"]`);
+      if (el && !el.classList.contains('removing')) el.remove();
+    }
+  });
+
+  items.forEach((todo, idx) => {
+    let el = list.querySelector(`[data-id="${todo.id}"]`);
+    if (!el) {
+      el = createTodoEl(todo);
+      list.appendChild(el);
+    } else {
+      updateTodoEl(el, todo);
+    }
+  });
+
+  // re-order DOM to match filtered order
+  items.forEach(todo => {
+    const el = list.querySelector(`[data-id="${todo.id}"]`);
+    if (el) list.appendChild(el);
+  });
+}
+
+function createTodoEl(todo) {
+  const el = document.createElement('div');
+  el.className = 'todo-item' + (todo.complete ? ' completed' : '');
+  el.dataset.id = todo.id;
+  el.innerHTML = `
+    <button class="toggle-btn" title="完了切り替え">
+      <svg viewBox="0 0 14 14" fill="none" stroke="#0B0D18" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="2,7 5.5,10.5 12,3.5"/>
+      </svg>
+    </button>
+    <span class="todo-text">${escHtml(todo.title)}</span>
+    <span class="todo-id">#${todo.id}</span>
+    <button class="delete-btn" title="削除">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/>
+      </svg>
+    </button>`;
+  el.querySelector('.toggle-btn').addEventListener('click', () => toggleTodo(todo.id));
+  el.querySelector('.delete-btn').addEventListener('click', () => deleteTodo(todo.id));
+  return el;
+}
+
+function updateTodoEl(el, todo) {
+  el.classList.toggle('completed', todo.complete);
+  el.querySelector('.todo-text').textContent = todo.title;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── UI events ─────────────────────────────────────────────
+document.getElementById('add-btn').addEventListener('click', function(e) {
+  // ripple
+  const btn = this;
+  const r = document.createElement('span');
+  r.className = 'ripple';
+  const size = Math.max(btn.offsetWidth, btn.offsetHeight);
+  r.style.cssText = `width:${size}px;height:${size}px;left:${e.offsetX - size/2}px;top:${e.offsetY - size/2}px`;
+  btn.appendChild(r);
+  setTimeout(() => r.remove(), 600);
+
+  const input = document.getElementById('new-todo-input');
+  const val = input.value.trim();
+  if (!val) { input.focus(); return; }
+  addTodo(val);
+  input.value = '';
+  input.focus();
+});
+
+document.getElementById('new-todo-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('add-btn').click();
+});
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    currentFilter = this.dataset.filter;
+    renderAll();
+  });
+});
+
+// ─── Helpers ───────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function showError(msg) {
+  const b = document.getElementById('error-banner');
+  if (msg) { b.textContent = msg; b.style.display = 'block'; }
+  else { b.style.display = 'none'; }
+}
+
+// ─── Init ──────────────────────────────────────────────────
+loadTodos();
+</script>
+</body>
+</html>

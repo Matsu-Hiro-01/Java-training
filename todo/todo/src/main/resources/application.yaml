@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: todo  # アプリケーション名（任意）
+
+  datasource:
+    # ① PostgreSQLの接続URL（ホスト、ポート、DB名）
+    url: jdbc:postgresql://localhost:5432/user
+
+    # ② 使用するデータベースのドライバークラス名
+    driver-class-name: org.postgresql.Driver
+
+    # ③ データベースのログインユーザー名
+    username: postgres
+
+    # ④ データベースのログインパスワード
+    password: AE007200
