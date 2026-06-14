@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>超シンプル勤怠システム</title>
+</head>
+<body>
+<h1>勤怠打刻</h1>
+
+<form th:action="@{/attendance/punch-in}" method="post" style="display:inline;">
+    <button type="submit" style="font-size:20px; padding:10px 20px;">出勤</button>
+</form>
+
+<form th:action="@{/attendance/punch-out}" method="post" style="display:inline;">
+    <button type="submit" style="font-size:20px; padding:10px 20px;">退勤</button>
+</form>
+
+<h2>打刻ログ一覧</h2>
+<button onclick="window.print()">このページを印刷 / PDF保存</button>
+
+<br><br>
+<table border="1" style="width:50%; text-align:center; border-collapse:collapse;">
+    <thead>
+    <tr style="background-color:#f2f2f2;">
+        <th>種別</th>
+        <th>日時</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="log : ${logs}">
+        <td th:text="${log.punchType.name() == 'ATTENDANCE' ? '出勤' : '退勤'}">出勤</td>
+        <td th:text="${#temporals.format(log.punchTime, 'yyyy-MM-dd HH:mm:ss')}">2026-06-14 16:00:00</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: attendance  # アプリケーション名（任意）
+
+  datasource:
+    # ① PostgreSQLの接続URL（ホスト、ポート、DB名）
+    url: jdbc:postgresql://localhost:5432/kintai
+
+    # ② 使用するデータベースのドライバークラス名
+    driver-class-name: org.postgresql.Driver
+
+    # ③ データベースのログインユーザー名
+    username: postgres
+
+    # ④ データベースのログインパスワード
+    password: AE007200
+  jpa:
+    hibernate:
+      ddl-auto: update  # ← テーブル自動作成
+    show-sql: true      # ← 実行されるSQLをログに表示
