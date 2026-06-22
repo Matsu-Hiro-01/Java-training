@@ -26,6 +26,7 @@ public class Attendance {
 
     public Attendance() {}
 
+    //Idは自動採番にするため、コンストラクタに含めると引数が必要になるため除外
     public Attendance(PunchType punchType, LocalDateTime punchTime) {
         this.punchType = punchType;
         this.punchTime = punchTime;
